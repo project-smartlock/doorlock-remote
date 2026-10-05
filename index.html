@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- GitHub Pages không cho đặt HTTP header nên CSP đặt bằng thẻ meta (phải đứng trước mọi <script>).
+     connect-src phải khớp BROKER_URL trong app.js. Chống nhúng iframe (frame-ancestors) không đặt được
+     bằng meta, app.js tự xử lý. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src blob:; connect-src wss://c3b542cb563643909107a4fb1b8da0e0.s1.eu.hivemq.cloud:8884; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%227%22 width=%2210%22 height=%228%22 rx=%221.5%22 fill=%22%232563eb%22/%3E%3Cpath d=%22M5 7V5a3 3 0 0 1 6 0v2%22 fill=%22none%22 stroke=%22%232563eb%22 stroke-width=%221.6%22/%3E%3C/svg%3E">
+<title>Khóa cửa từ xa</title>
+<style>
+/* Cùng bảng màu với index.html chạy trên ESP32 để hai giao diện nhìn như một */
+:root{--bg:#f4f5f7;--card:#fff;--text:#1d2330;--muted:#6b7280;--line:#e3e6eb;--accent:#2563eb;--ok:#15803d;--warn:#b45309;--bad:#dc2626;--voice:#7c3aed}
+@media (prefers-color-scheme:dark){:root{--bg:#111418;--card:#1b1f25;--text:#e6e8eb;--muted:#9aa3ad;--line:#2b313a;--accent:#3b82f6;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--voice:#a78bfa}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{font-size:17px;margin:0;white-space:nowrap}
+h2{font-size:15px;margin:0 0 10px}
+main{max-width:760px;margin:0 auto;padding:16px;display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.hdr-right{display:flex;align-items:center;gap:10px;min-width:0}
+header button{white-space:nowrap;padding:5px 10px;font-size:13px;flex:none}
+.conn{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.conn::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:6px}
+.conn.on::before{background:var(--ok)}
+.conn.off::before{background:var(--bad)}
+#alert{background:var(--bad);color:#fff;border-radius:10px;padding:14px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+#alert b{display:block;font-size:16px}
+button,.btn{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--bad)}
+button:disabled{opacity:.5;cursor:default}
+#alert button{background:#fff;color:#b91c1c;border:0;font-weight:600;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chips button{padding:4px 10px;font-size:13px;border-radius:99px}
+.chips button.sel{background:var(--text);color:var(--card);border-color:var(--text)}
+ul{list-style:none;margin:0;padding:0}
+li.row{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+li.row:first-child{border-top:0}
+.grow{flex:1;min-width:0;overflow-wrap:anywhere}
+.sub{font-size:13px;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;padding:8px 0}
+.tag{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;border:1px solid currentColor}
+.t-open{color:var(--ok)}.t-denied{color:var(--warn)}.t-intr{color:var(--bad)}.t-voice{color:var(--voice)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hint{font-size:13px;color:var(--muted);margin:8px 0 0}
+#login{max-width:380px;width:100%;margin:40px auto 0}
+#login label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+#login input[type=text],#login input[type=password]{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
+#login .check{display:flex;gap:8px;align-items:center;color:var(--text);font-size:14px;margin:12px 0}
+#login button{width:100%;margin-top:4px}
+#loginErr{color:var(--bad);font-size:14px;min-height:1.4em;margin:8px 0 0}
+details summary{cursor:pointer;font-weight:600}
+details .bar{margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Khóa cửa từ xa</h1>
+  <div class="hdr-right">
+    <span id="conn" class="conn">Chưa đăng nhập</span>
+    <button id="logoutBtn" hidden>Đăng xuất</button>
+  </div>
+</header>
+
+<main>
+  <form id="login" class="card" autocomplete="on">
+    <h2>Đăng nhập broker MQTT</h2>
+    <p class="sub" style="margin:0">Dùng tài khoản HiveMQ Cloud được cấp cho nhóm. Mật khẩu chỉ được gửi tới broker,
+      không lưu trên máy chủ của trang này.</p>
+    <label for="user">Tên đăng nhập</label>
+    <input id="user" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+    <label for="pass">Mật khẩu</label>
+    <input id="pass" type="password" autocomplete="current-password" required>
+    <label class="check"><input id="remember" type="checkbox" checked> Ghi nhớ trên máy này</label>
+    <button id="loginBtn" class="primary" type="submit">Kết nối</button>
+    <p id="loginErr" role="alert"></p>
+  </form>
+
+  <div id="app" hidden>
+    <div id="alert" role="alert" hidden>
+      <div><b>Phát hiện đột nhập!</b><span id="alertText"></span></div>
+      <button id="alertOk">Đã xem</button>
+    </div>
+
+    <section class="card" style="margin-top:16px">
+      <h2>Lịch sử ra vào</h2>
+      <div class="chips" id="chips"></div>
+      <ul id="histList"><li class="empty">Đang chờ dữ liệu từ khóa…</li></ul>
+      <p class="hint">Lịch sử đầy đủ và tin nhắn thoại chỉ xem được trên giao diện trong mạng Wi-Fi ở nhà.
+        Trang này giữ các sự kiện nhận qua MQTT ngay trên máy bạn.</p>
+      <div class="bar" style="margin-top:10px">
+        <button id="notifyBtn" hidden>Bật thông báo trình duyệt</button>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <details>
+        <summary>Bảng giả lập (bản test)</summary>
+        <p class="hint">Gửi lệnh qua topic <code>doorlock/cmd</code>. ESP32 bản test sinh sự kiện giả tương ứng,
+          sự kiện đó quay lại trang này qua MQTT và hiện trên giao diện trong nhà qua WebSocket.</p>
+        <div class="bar" id="simBar">
+          <button data-cmd="open">Mở cửa hợp lệ</button>
+          <button data-cmd="denied">Xác thực sai</button>
+          <button data-cmd="intrusion" class="danger">Đột nhập</button>
+          <button data-cmd="voice_in">Khách để lại tin nhắn</button>
+        </div>
+        <p id="simMsg" class="hint"></p>
+      </details>
+    </section>
+  </div>
+</main>
+
+<script src="mqtt.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
