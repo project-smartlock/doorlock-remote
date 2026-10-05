@@ -16,7 +16,7 @@ if (window.top !== window.self) {
 const BROKER_URL = 'wss://97d22f3b8f97414890abfd56b42bfcf0.s1.eu.hivemq.cloud:8884/mqtt';
 const T = { event: 'doorlock/event', history: 'doorlock/history', status: 'doorlock/status', cmd: 'doorlock/cmd' };
 
-const CRED_KEY = 'doorlock.cred', CACHE_KEY = 'doorlock.events', CACHE_MAX = 300, TITLE = document.title;
+const CRED_KEY = 'doorlock.cred', CACHE_KEY = 'doorlock.events', GEN_KEY = 'doorlock.gen', CACHE_MAX = 300, TITLE = document.title;
 const EVT = {
   open: ['Mở cửa', 't-open'], denied: ['Sai xác thực', 't-denied'], intrusion: ['Đột nhập', 't-intr'],
   voice_in: ['Tin nhắn đến', 't-voice'], voice_out: ['Tin nhắn đi', 't-voice'],
@@ -183,13 +183,28 @@ function onMessage(topic, payload) {
       if (e.type === 'intrusion') showAlert(e);
     }
   } else if (topic === T.history) {
-    const list = parseJson(payload);
-    if (!Array.isArray(list)) return;
+    // Firmware hiện tại gửi {"gen","events"}; firmware cũ gửi thẳng mảng (không có gen)
+    const msg = parseJson(payload);
+    const list = Array.isArray(msg) ? msg : (msg && Array.isArray(msg.events) ? msg.events : null);
+    if (!list) return;
     // Lần đầu nhận lịch sử (bản retained lúc vừa mở trang): báo các vụ đột nhập máy này chưa thấy,
-    // trừ khi máy chưa từng có dữ liệu (mở trang lần đầu thì không báo dồn chuyện cũ).
+    // trừ khi máy chưa từng có dữ liệu (mở trang lần đầu thì không báo dồn chuyện cũ). Tính TRƯỚC khi
+    // xóa: đột nhập xảy ra sau lần xóa lịch sử mà máy chưa thấy thì vẫn phải báo.
     const firstEver = !historyLoaded && events.length === 0;
+    let wiped = false;
+    if (!Array.isArray(msg) && Number.isFinite(msg.gen)) {
+      // gen chỉ đổi khi lịch sử bị xóa trên khóa -> xóa luôn bản lưu trong trình duyệt. Máy chưa lưu
+      // gen nào (lần đầu dùng) thì chỉ ghi nhận, không xóa.
+      const savedGen = load(GEN_KEY);
+      if (savedGen != null && savedGen !== msg.gen) {
+        events = []; seen = new Set();
+        clearAlert();
+        wiped = true;
+      }
+      store(GEN_KEY, msg.gen);
+    }
     const fresh = list.filter(addEvent);
-    if (fresh.length) {
+    if (fresh.length || wiped) {
       saveCache(); renderHistory();
       if (!firstEver) {
         const intr = fresh.filter(e => e.type === 'intrusion');
@@ -276,7 +291,7 @@ $('login').onsubmit = ev => {
 $('logoutBtn').onclick = () => {
   if (client) client.end(true);
   client = null;
-  store(CRED_KEY, null); store(CACHE_KEY, null);
+  store(CRED_KEY, null); store(CACHE_KEY, null); store(GEN_KEY, null);
   events = []; seen = new Set(); historyLoaded = false;
   clearAlert(); renderHistory();
   $('pass').value = '';

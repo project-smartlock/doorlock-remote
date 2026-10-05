@@ -15,7 +15,7 @@ Trang không nói chuyện trực tiếp với ESP32 mà đi qua broker MQTT Hiv
 | Topic | Chiều | Nội dung |
 |---|---|---|
 | `doorlock/event` | ESP32 → web | JSON một sự kiện `{"ts","type","method","detail"}` |
-| `doorlock/history` | ESP32 → web (retained) | Mảng JSON các sự kiện gần nhất |
+| `doorlock/history` | ESP32 → web (retained) | `{"gen": <mã phiên>, "events": [...]}`. `gen` đổi khi lịch sử bị xóa trên khóa, trang thấy gen mới thì xóa lịch sử lưu trong trình duyệt |
 | `doorlock/status` | ESP32 → web (retained) | `online` / `offline` (Last Will) |
 | `doorlock/cmd` | web → ESP32 | `open`, `denied`, `intrusion`, `voice_in` |
 
