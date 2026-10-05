@@ -13,7 +13,7 @@ if (window.top !== window.self) {
 
 // Địa chỉ WebSocket của broker HiveMQ Cloud: cổng 8884, đường dẫn /mqtt. Đổi broker thì sửa cả
 // connect-src trong thẻ meta CSP của index.html. KHÔNG ghi username/password vào đây: trang công khai.
-const BROKER_URL = 'wss://c3b542cb563643909107a4fb1b8da0e0.s1.eu.hivemq.cloud:8884/mqtt';
+const BROKER_URL = 'wss://97d22f3b8f97414890abfd56b42bfcf0.s1.eu.hivemq.cloud:8884/mqtt';
 const T = { event: 'doorlock/event', history: 'doorlock/history', status: 'doorlock/status', cmd: 'doorlock/cmd' };
 
 const CRED_KEY = 'doorlock.cred', CACHE_KEY = 'doorlock.events', CACHE_MAX = 300, TITLE = document.title;
