@@ -13,24 +13,8 @@
   --bad-bg: #fbe9e7;
   --warn-bg: #fdf1dc;
   --radius: 10px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121418;
-    --surface: #1c1f25;
-    --text: #e6e8eb;
-    --muted: #9aa4b2;
-    --border: #2e333b;
-    --accent: #6d95ff;
-    --accent-text: #0d1117;
-    --ok: #5fcf8f;
-    --bad: #ff8a80;
-    --warn: #f0b85a;
-    --ok-bg: #16301f;
-    --bad-bg: #3a1c1a;
-    --warn-bg: #3a2c12;
-  }
+  /* Light only, whatever the OS theme; "only" also opts out of Chrome's forced dark mode. */
+  color-scheme: only light;
 }
 
 * { box-sizing: border-box; }

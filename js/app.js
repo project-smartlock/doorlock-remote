@@ -83,6 +83,16 @@ const submitBtn = form.querySelector('button[type=submit]');
 const saved = { url: config.brokerUrl, deviceId: config.deviceId, ...(loadJson(STORE_KEY) ?? {}) };
 for (const key of ['url', 'deviceId', 'username']) if (saved[key]) form.elements[key].value = saved[key];
 
+// A value set in config.js is fixed for this deployment: hide its field and ignore any older saved value.
+// Disabled keeps the hidden input out of form validation while its value stays readable on submit.
+for (const [key, value] of [['url', config.brokerUrl], ['deviceId', config.deviceId]]) {
+  if (!value) continue;
+  const input = form.elements[key];
+  input.value = value;
+  input.disabled = true;
+  input.closest('label').hidden = true;
+}
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = form.elements;
