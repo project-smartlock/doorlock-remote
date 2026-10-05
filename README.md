@@ -1,29 +1,20 @@
-# Khóa cửa từ xa
+# Khóa cửa từ xa (chỉ xem)
 
-Trang web tĩnh để theo dõi khóa cửa thông minh (ESP32-S3) **từ bất kỳ mạng nào**, chạy trên GitHub Pages.
-Trang không nói chuyện trực tiếp với ESP32 mà đi qua broker MQTT HiveMQ Cloud bằng WebSocket bảo mật (`wss://`, cổng 8884).
+Bản deploy GitHub Pages của thư mục `web/` trong project
+[AESD_project](https://github.com/anh-phi-dao/AESD_project). Đừng sửa trực tiếp ở đây: sửa trong `web/`
+của project rồi copy sang repo này.
 
-- Xem trạng thái khóa (trực tuyến / ngoại tuyến)
-- Lịch sử ra vào (20 sự kiện gần nhất từ ESP32 + các sự kiện trình duyệt đã lưu)
-- Cảnh báo đột nhập: nền đỏ, kêu bíp, rung, nháy tiêu đề tab
-- Bảng giả lập (bản test): gửi lệnh `open` / `denied` / `intrusion` / `voice_in` xuống ESP32
+Trang kết nối tới broker HiveMQ Cloud qua `wss://` (cổng 8884) để xem khóa ESP32-S3:
 
-Đăng nhập bằng tài khoản HiveMQ Cloud của nhóm. Repo này **không chứa mật khẩu nào**, đừng thêm vào.
+- Trạng thái trực tuyến / ngoại tuyến (Last Will)
+- Lịch sử ra vào và cảnh báo, xem được cả khi khóa offline (topic retained `recent`)
+- Cảnh báo: banner, âm báo, rung, nháy tiêu đề tab; báo cả cảnh báo bị lỡ khi đóng trang
+- Cài như app (PWA)
 
-## Topic MQTT (phải khớp `mqtt_client_tcp.h` trong firmware)
+**Chế độ chỉ xem: không có cách nào mở cửa qua mạng.** Không có topic hay nút gửi lệnh mở cửa. Cửa chỉ mở
+bằng keypad/NFC tại chỗ.
 
-| Topic | Chiều | Nội dung |
-|---|---|---|
-| `doorlock/event` | ESP32 → web | JSON một sự kiện `{"ts","type","method","detail"}` |
-| `doorlock/history` | ESP32 → web (retained) | `{"gen": <mã phiên>, "events": [...]}`. `gen` đổi khi lịch sử bị xóa trên khóa, trang thấy gen mới thì xóa lịch sử lưu trong trình duyệt |
-| `doorlock/status` | ESP32 → web (retained) | `online` / `offline` (Last Will) |
-| `doorlock/cmd` | web → ESP32 | `open`, `denied`, `intrusion`, `voice_in` |
+Topic và payload: xem `docs/mqtt_protocol.md` trong project (tiền tố `lock/<device_id>/`).
 
-## Cập nhật trang
-
-Sửa file rồi commit + push lên nhánh `main`, GitHub Pages tự cập nhật sau 1-2 phút
-(trình duyệt có thể giữ bản cũ thêm ~10 phút, bấm Ctrl+F5 để tải lại).
-
-Đổi broker thì sửa **cả hai chỗ**: `BROKER_URL` trong `app.js` và `connect-src` trong thẻ meta CSP của `index.html`.
-
-`mqtt.min.js` là [MQTT.js](https://github.com/mqttjs/MQTT.js) 5.16.0 (giấy phép MIT), đặt kèm để không phụ thuộc CDN.
+`config.js` chỉ điền sẵn URL broker và mã thiết bị. File này công khai, **không ghi mật khẩu vào đây**.
+Đăng nhập bằng tài khoản web trên broker, không dùng tài khoản của thiết bị.
